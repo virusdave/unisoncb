@@ -1,0 +1,980 @@
+releaseNotes: Doc
+releaseNotes = [:
+  An example implementation of lazily evaluated streams.
+
+  An example use of this is a standard sieve of eratosthenes implementation
+  of a stream of all prime numbers, at @.releases.stream._v1.examples.primes which is an
+  @[signature] examples.primes
+  
+  You can see it in use via the tests at @tests.examples.primes and
+  @tests.examples.primes10
+
+  Partially evaluating it, the first 15 primes are @[evaluate] Stream.force (Stream.take 15 examples.primes)
+:]
+
+----
+
+tests.examples.primes10 : [Result]
+tests.examples.primes10 =
+  run
+    (expect
+      (   [2, 3, 5, 7, 11, 13, 17, 19, 23, 29]
+      == Stream.force (Stream.take 10 examples.primes)))
+
+---- Anything below this line is ignored by Unison.
+
+
+use test.v1
+use .base.Optional
+use .base
+use Stream
+use tests.laziness
+
+
+----
+
+Stream.partition : (a -> Boolean) -> Stream a -> ('Stream a, 'Stream a)
+Stream.partition p as = 
+  not: (a->Boolean) -> a -> Boolean
+  not f a = case f a of
+    true -> false
+    false -> true
+  ('(filter p as), '(filter (not p) as))
+
+
+test> tests.laziness.ex7 = run (expect ([1] == force (take 1 (takeWhile ((>) 100) boom))))
+test> tests.laziness.ex8 = run (expect ([1,2,3,4] == force (take 4 (takeWhile ((>) 100) boom))))
+test> tests.laziness.ex9 = run (expect ([2,4] == force (take 2 (filter (x -> x `mod` 2 == 0) boom))))
+----
+
+test> tests.generators.ex1 = run (expect ([1,2,3,4] == Stream.force (Stream.take 4 (fromNat 1))))
+test> tests.generators.ex2 = run (expect ([11,12,13,14] == Stream.force (Stream.take 4 (fromNat 11))))
+
+test> tests.generators.ex3 =
+  go _ = start = !nat
+         len = !nat
+         expect (force (take len (fromNat start)) == force (take len (from start (x -> Some(x+1)))))
+  runs 100 go
+
+
+----
+
+test> tests.laziness.ex2 = run (expect ([1,2,3] == Stream.force (Stream.take 3 boom)))
+test> tests.laziness.ex3 = run (expect ([1,2,3,4] == Stream.force (Stream.take 4 boom)))
+
+test> tests.laziness.ex4 = run (expect ([2,4,6,8] == Stream.force (Stream.take 4 (map (x -> x * 2) boom))))
+test> tests.laziness.ex5 = run (expect ([1,2,2,4,3,6,4,8] == Stream.force (Stream.take 8 (flatMap (x -> (x +: (x * 2 +: Nada))) boom))))
+> Stream.force (Stream.take 8 (flatMap (x -> (x +: (x * 2 +: Nada))) boom))
+
+test> tests.laziness.ex6 = run (expect ([10, 12, 14, 16] == Stream.force (Stream.take 4 (map ((*) 2) (fromNat 5)))))
+
+test> tests.examples.primes = run (expect ([2, 3, 5, 7, 11, 13, 17] == Stream.force (Stream.take 7 examples.primes)))
+----
+
+Stream.take : .base.Nat -> Stream a -> Stream a
+Stream.take n as =
+  use Stream Elem Nada
+  case as of
+    Nada -> Nada
+    Elem a rest ->
+      use .base.Universal >
+      case n of
+        0 -> Nada
+        1 -> Stream.pure a
+        _ -> Elem a '(Stream.take (.base.Nat.drop n 1) !rest)
+
+
+use test.v1
+use .base.Optional
+use Stream
+use tests.laziness
+
+test> tests.laziness.ex2 = run (expect ([1,2,3] == Stream.force (Stream.take 3 boom)))
+test> tests.laziness.ex3 = run (expect ([1,2,3,4] == Stream.force (Stream.take 4 boom)))
+
+
+----
+
+tests.laziness.ex2 : [.base.Test.Result]
+tests.laziness.ex2 =
+  use .base.Universal ==
+  .test.internals.v1.Test.run
+    (.test.v1.expect
+      (   [1, 2, 3]
+      == Stream.force (Stream.take 3 tests.laziness.boom)))
+
+---- Anything below this line is ignored by Unison.
+
+tests.laziness.ex1 : [.base.Test.Result]
+tests.laziness.ex1 =
+  use .base.Universal ==
+  .test.internals.v1.Test.run
+    (.test.v1.expect
+      ([1] == Stream.force (Stream.take 1 tests.laziness.boom)))
+
+---- Anything below this line is ignored by Unison.
+
+Stream.take : .base.Nat -> Stream a -> Stream a
+Stream.take n as =
+  take' : .base.Nat -> 'Stream a -> 'Stream a
+  take' n' as' =
+    use Stream Elem Nada
+    case (!as') of
+      Nada -> Nil
+      Elem a rest ->
+        use .base.Universal >
+        if n' > 0 then '(Elem a (take' (.base.Nat.drop n' 1) rest)) else Nil
+  !(take' n 'as)
+
+---- Anything below this line is ignored by Unison.
+
+use test.v1
+use .base.Optional
+use Stream
+use tests.laziness
+
+test> tests.constructors.ex1 = run (expect ([1, 2, 3, 4] == Stream.force (1 +: (2 +: (3 +: (4 +: Nada))))))
+
+test> tests.constructors.ex2 = run (expect (Some(1, Nil) == Stream.split (Stream.pure 1)))
+
+test> tests.constructors.ex3 = run (expect ([2, 3, 4] == Stream.force (Stream.tail (1 +: (2 +: (3 +: (4 +: Nada)))))))
+
+tests.laziness.boom = 1 +: (2 +: (3 +: (Stream.Elem 4 '(Stream.pure (1/0)))))
+test> tests.laziness.ex1 = run (expect ([1] == Stream.force (Stream.take 1 boom)))
+test> tests.laziness.ex2 = run (expect ([1,2,3] == Stream.force (Stream.take 3 boom)))
+
+-- Stream.force (Stream.takeWhile (x -> x < 2) (Stream.one 1 :++ (Stream.one 2 `Stream.append` '(Stream.Elem (1/0) Stream.Nil))))
+
+----
+
+Stream.fromNat : .base.Nat -> Stream .base.Nat
+Stream.fromNat n =
+  use .base.Nat +
+  Stream.Elem n '(Stream.fromNat (n + 1))
+
+---- Anything below this line is ignored by Unison.
+
+
+Stream.one : a -> Stream a
+Stream.one a = Stream.Elem a Stream.Nil
+
+examples.primes: Stream .base.Nat
+examples.primes = let
+  primes' : 'Stream .base.Nat
+  --primes' = '(let
+  primes' = '((Stream.one 2) `Stream.append` 'let
+    use .base Nat
+    use Stream filter
+    smallPrimeFactorsOf : Nat -> Stream Nat
+    smallPrimeFactorsOf a =
+      use .base.Universal ==
+      primesLessThanSqrtA =
+        use .base.Nat *
+        use .base.Universal >=
+        Stream.takeWhile (p -> a >= (p * p)) !primes'
+      filter (p -> .base.Nat.mod a p == 0) primesLessThanSqrtA
+    anyPrimeFactor : Nat -> .base.Boolean
+    anyPrimeFactor a =
+      case smallPrimeFactorsOf a of
+        Stream.Nada -> true
+        _ -> false
+    filter anyPrimeFactor (Stream.fromNat 3)
+    )
+  !primes'
+
+> (Stream.force (Stream.map toText (Stream.take (0+5) examples.primes)))
+
+---- Anything below this line is ignored by Unison.
+
+use .base Text Optional List Nat Boolean
+use .base.Optional Some None
+use .base.io
+use .virusdave.scratch.pad.stream
+use .virusdave.scratch.pad.stream.Stream
+use .virusdave.common
+
+Stream.headOr : a -> Stream a -> a
+Stream.headOr a as = case as of
+  Stream.Nada -> a
+  Stream.Elem h _ -> h
+
+Stream.takeWhile' : (a -> .base.Boolean) -> Stream a ->{IO} Stream a
+Stream.takeWhile' f as =
+  use Stream Elem Nada
+  case as of
+    Nada -> 
+      printLine("End of stream")
+      Nada
+    Elem a rest -> 
+      if f a then 
+        printLine("Pred f passed on head a")
+        Elem a '(Stream.takeWhile' f !rest) 
+      else 
+        printLine("Pred f failed on head a")
+        Nada
+
+
+--primes' : '{IO} (Stream Nat)
+--primes' = '((Stream.one 2) `Stream.append` 'let
+primes' : '(Stream Nat)
+primes' = '(let
+  smallPrimeFactorsOf : Nat -> Stream Nat
+  smallPrimeFactorsOf a = let
+      primesLessThanSqrtA = Stream.takeWhile (p -> (a >= (p * p))) !primes' 
+      Stream.filter (p -> (a `Nat.mod` p) == 0) primesLessThanSqrtA
+
+  anyPrimeFactor : Nat -> Boolean
+  anyPrimeFactor a = case smallPrimeFactorsOf a of
+      Stream.Nada -> true  -- a has no smaller prime factors
+      _ -> false           -- a has at least one smaller prime factor
+    
+  Stream.filter  anyPrimeFactor  (Stream.fromNat 2)
+  )
+
+-- > Stream.force (Stream.takeWhile (x -> x < 2) (Stream.one 1 :++ (Stream.one 2 `Stream.append` '(Stream.Elem (1/0) Stream.Nil))))
+
+-- primes : Stream Nat
+-- primes = !primes'
+
+-- > Stream.take 1 !primes'
+-- > Stream.take 2 !primes'
+--   > Stream.force (Stream.take 2 !primes')
+-- > Stream.take 3 primes
+-- > Stream.force (Stream.take 3 primes)
+-- > Stream.force (Stream.take 10 primes)
+
+----
+
+primes : '(Stream Nat)
+primes = '(
+  Stream.filter
+    (a -> let
+      primesLessThanA = Stream.takeWhile (hole) !primes 
+      primeFactorsOfA = 
+        Stream.filter
+          (p -> a Nat.mod p == 0)
+          primesLessThanA
+      case primeFactorsOfA of
+        Stream.Nada -> true  -- a has no smaller prime factors
+        _ -> false           -- a has at least one smaller prime factor
+    )
+    (Stream.fromNat 2)
+ )
+
+----
+
+use .base Text Optional List Nat Boolean
+use .base.Optional Some None
+use Stream
+-- use .virusdave.scratch.pad.stream.Stream
+
+Stream.takeWhile : (a -> Boolean) -> Stream a -> Stream a
+Stream.takeWhile f as = case as of
+  Nada -> Nada
+  Elem a rest -> if (f a) then Elem a '(takeWhile f !rest) else Nada
+
+> force (takeWhile (x -> x < 10) (fromNat 2))  
+
+----
+
+use .base Text Optional List Nat Boolean
+use .base.Optional Some None
+-- use .virusdave.scratch.pad.stream.Stream
+
+Stream.filter : (a -> Boolean) -> Stream a -> Stream a
+Stream.filter f =
+  Stream.flatMap (a -> if (f a) then (Stream.one a) else Stream.Nada)
+
+----
+
+use .base Text Optional List Nat
+use .base.Optional Some None
+use Stream
+
+(Stream.+:) : a -> Stream a -> Stream a
+(Stream.+:) a as = Elem a 'as
+
+(Stream.:+) : Stream a -> a -> Stream a
+(Stream.:+) as a =
+  append as '(Stream.one a)
+
+Stream.one : a -> Stream a
+Stream.one a = Elem a Nil
+
+(Stream.:++) : Stream a -> Stream a -> Stream a
+(Stream.:++) as as' = Stream.append as 'as'
+----
+
+use .base Text Optional List Nat
+use .base.Optional Some None
+
+> (1 +: (2 +: (3 +: (4 +: Nada))))
+
+----
+
+type Stream a = Nada | Elem a ('Stream a)
+Stream.Nil : '(Stream a)
+Stream.Nil = 'Stream.Nada
+
+
+
+Stream.fromNat : Nat -> Stream Nat
+Stream.fromNat n = Stream.Elem n '(Stream.fromNat (n+1))
+
+Stream.from : a -> (a -> Optional a) -> Stream a
+Stream.from a f =
+  Stream.Elem a '(case f a of
+    Some next -> (Stream.from next f)
+    None -> Stream.Nada
+  )
+
+Stream.map : (a -> b) -> Stream a -> Stream b
+Stream.map f as = case as of
+  Stream.Nada -> Stream.Nada
+  Stream.Elem a rest -> Stream.Elem (f a) '(Stream.map f !rest )
+
+Stream.replaceTail : Stream a -> '(Stream a) -> Stream a
+Stream.replaceTail as as' = case as of
+  Stream.Nada -> !as'
+  Stream.Elem a rest -> Stream.Elem a '(Stream.replaceTail !rest as')
+    
+
+Stream.flatMap : (a -> Stream b) -> Stream a -> Stream b
+Stream.flatMap f as = case as of
+  Stream.Nada -> Stream.Nada
+  Stream.Elem a rest ->
+    Stream.replaceTail (f a) '(Stream.flatMap f !rest)
+
+> Stream.force(
+   Stream.take 10 (
+    Stream.flatMap
+      (x -> Stream.take x (Stream.fromNat 1)) 
+      (Stream.fromNat 1)
+   )
+  )
+
+Stream.force : Stream a -> [a]
+Stream.force as = case as of
+  Stream.Nada -> []
+  Stream.Elem a next -> [a] ++ Stream.force (!next)
+
+-- > Stream.fromNat 1
+-- > Stream.from 5 (x -> if (x > 0) then Some(Nat.drop x 1) else None)
+> Stream.force (Stream.from 5 (x -> if (x > 0) then Some(Nat.drop x 1) else None))
+
+> Stream.force (Stream.take 15 (Stream.fromNat (1)))
+> Stream.force (Stream.take 15 (Stream.map (x -> x * 2) (Stream.fromNat (1))))
+
+Stream.tail : Stream a -> Stream a
+Stream.tail as = case as of
+  Stream.Nada -> Stream.Nada
+  Stream.Elem a rest -> !rest
+
+Stream.take : Nat -> Stream a -> Stream a
+Stream.take n as = case as of
+  Stream.Nada -> Stream.Nada
+  Stream.Elem a rest -> 
+    if (n > 0) then Stream.Elem a '(Stream.take (Nat.drop n 1) !rest)
+    else Stream.Nada
+
+Stream.split : Stream a -> Optional (a, 'Stream a)
+Stream.split s = case s of
+  Stream.Nada -> None
+  Stream.Elem a as -> Some (a, as)
+
+
+> (1 +++ (2 +++ (3 +++ (4 +++ Nada))))
+> Stream.force (Stream.map (x -> x * 3) (1 +++ (2 +++ (3 +++ (4 +++ Nada)))))
+----
+
+> Elem 1 ('Elem 2 ('Elem 3 Stream.Nil))
+
+
+----
+
+use .base Text Optional List
+use .base.io IO Handle FilePath Mode getLine openFile
+use .base.Optional Some None
+
+mapLinesFromFile: Text -> (Text ->{} Optional a) ->{IO} [a]
+mapLinesFromFile fname f =
+  h = openFile (FilePath fname) Mode.Read
+  recur: [a] -> [a]
+  recur as = if (isFileEOF h) then as else
+    line = getLine h
+    case f line of
+      Some a -> recur (a +: as)
+      None -> as
+
+    
+  res = List.reverse (recur [])
+  closeFile h
+
+  res
+
+
+
+----
+
+qsort : [a] ->{LessThan a} [a]
+qsort as =
+  use LessThan lt
+  case as of
+    [] -> []
+    [a] -> [a]
+    [a, b] -> if lt a b then [a, b] else [b, a]
+    a +: b +: c +: rest ->
+      use .base.List ++ filter
+      pivot'' : a
+      pivot'' =
+        use .base.Nat /
+        .base.List.unsafeAt (.base.List.size as / 2) as
+      pivot' : a
+      pivot' = if lt a b then if lt b c then b else c else if lt a c then a else c
+      pivot = pivot'
+      lhs = filter as (a -> lt a pivot)
+      mid =
+        use .base.Boolean not
+        filter as (a -> and (not (lt a pivot)) (not (lt pivot a)))
+      rhs = filter as (a -> lt pivot a)
+      qsort lhs ++ mid ++ qsort rhs
+
+---- Anything below this line is ignored by Unison.
+
+qsort : [a] ->{LessThan a} [a]
+qsort as =
+  use LessThan lt
+  case as of
+    [] -> []
+    [a] -> [a]
+    [a, b] -> if lt a b then [a, b] else [b, a]
+    a +: b +: c +: rest ->
+      use .base.List ++ filter
+      pivot'' : a
+      pivot'' =
+        use .base.Nat /
+        .base.List.unsafeAt (.base.List.size as / 2) as
+      pivot' : a
+      pivot' = if lt a b then if lt b c then b else c else if lt a c then a else c
+      pivot = pivot'
+      lhs = filter as (a -> lt a pivot)
+      mid =
+        use .base.Boolean not
+        filter as (a -> and (not (lt a pivot)) (not (lt pivot a)))
+      rhs = filter as (a -> lt pivot a)
+      qsort lhs ++ mid ++ qsort rhs
+
+---- Anything below this line is ignored by Unison.
+
+qsort : [a] ->{LessThan a} [a]
+qsort as =
+  use LessThan lt
+  case as of
+    [] -> []
+    [a] -> [a]
+    [a, b] -> if lt a b then [a, b] else [b, a]
+    a +: b +: c +: rest ->
+      use .base.List ++ filter
+      pivot'' : a
+      pivot'' =
+        use .base.Nat /
+        .base.List.unsafeAt (.base.List.size as / 2) as
+      pivot' : a
+      pivot' = if lt a b then if lt b c then b else c else if lt a c then a else c
+      pivot = pivot'
+      lhs = filter as (a -> lt a pivot)
+      mid =
+        use .base.Boolean not
+        filter as (a -> and (not (lt a pivot)) (not (lt pivot a)))
+      rhs = filter as (a -> lt pivot a)
+      qsort lhs ++ mid ++ qsort rhs
+
+---- Anything below this line is ignored by Unison.
+
+use .base
+use Optional Some None
+use Boolean
+use .virusdave.common
+
+ability Stack a where
+  push : a -> ()
+  --push : Optional a -> ()
+  peek : Optional a
+  pop : Optional a
+  drop : ()  -- True if something was dropped.
+  empty : Boolean
+  get : [a]
+
+stackHandle : [a] -> Request (Stack a) k -> k
+stackHandle stack r = case r of
+  {Stack.push a -> k} -> handle stackHandle (a +: stack) in !k
+  {Stack.pop -> k} -> handle stackHandle stack in
+    k (remembering Stack.peek (v -> Stack.drop))
+  {Stack.peek -> k} -> handle stackHandle stack in k (head stack)
+  {Stack.drop -> k} -> handle stackHandle (tail stack) in !k
+  {Stack.get -> k} -> handle stackHandle stack in k stack
+  {k} -> k
+
+> handle (stackHandle [24, 42]) in Stack.pop; Stack.push 12; Stack.get
+> handle (stackHandle [24, 42]) in Stack.pop; Stack.push 13; Stack.get
+
+---
+
+use .base Request 
+use .base.io printLine IO
+
+ability Retain where
+  grabK : ()
+  replayK : ()
+
+retainHandle : 'k -> Request (Retain) a -> a
+retainHandle oldK r = case r of
+  {Retain.grabK -> k} ->
+    handle (retainHandle k) in !k
+  {Retain.replayK -> k} ->
+    handle (retainHandle k) in !oldK
+    handle (retainHandle k) in !k
+  {k} -> k
+
+
+testRetain : '{IO} ()
+testRetain = 
+ 'handle ( retainHandle '() ) in
+    printLine "3+4"
+    Retain.grabK
+    printLine "42"
+    printLine "43"
+    Retain.replayK
+    printLine "69"
+    ()
+
+testPrint : '{IO} ()
+testPrint = '(printLine "Hello, world!")
+---
+
+> handle ( retainHandle '() ) in
+    printLine "3+4"
+    Retain.grabK
+    printLine "42"
+    Retain.replayK
+    printLine "69"
+    42
+
+
+----
+
+tests.msort.t08 : [.base.Test.Result]
+tests.msort.t08 = handle natLessThan in 
+  use .base |>
+  use .base.List range
+  use .base.Universal ==
+  .test.internals.v1.Test.run
+    (.test.v1.expect
+      (   msort (range 1 5000 |> .base.List.reverse)
+        == range 1 5000))
+
+---- Anything below this line is ignored by Unison.
+
+msort : [a] ->{LessThan a} [a]
+msort as =
+  case as of
+    [] -> []
+    [a] -> [a]
+    _ ->
+      mergeSorted : [a] -> [a] -> [a] -> [a]
+      mergeSorted as bs sofar =
+        use .base.List ++
+        case (as, bs) of
+          ([], []) -> sofar
+          (as, []) -> sofar ++ as
+          ([], bs) -> sofar ++ bs
+          (a +: as', b +: bs') ->
+            use .base.List :+
+            if LessThan.lt a b then mergeSorted as' bs (sofar :+ a)
+            else mergeSorted as bs' (sofar :+ b)
+      case .base.List.halve as of
+        (lhs, rhs) -> mergeSorted (msort lhs) (msort rhs) []
+
+
+---- Anything below this line is ignored by Unison.
+
+tests.msort.t08 : [.base.Test.Result]
+tests.msort.t08 = handle natLessThan in 
+  use .base |>
+  use .base.List range
+  use .base.Universal ==
+  .test.internals.v1.Test.run
+    (.test.v1.expect
+      (   msort (range 1 10000 |> .base.List.reverse) 
+        == range 1 10000))
+
+---- Anything below this line is ignored by Unison.
+
+qsort : [a] ->{LessThan a} [a]
+qsort as =
+  use LessThan lt
+  case as of
+    [] -> []
+    [a] -> [a]
+    [a, b] -> if lt a b then [a, b] else [b, a]
+    a +: (b +: (c +: rest)) ->
+      use .base.List ++ filter
+      pivot'' : a
+      pivot'' =
+        use .base.Nat /
+        .base.List.unsafeAt (.base.List.size as / 2) as
+      pivot' : a
+      pivot' = if lt a b then if lt b c then b else c else if lt a c then a else c
+      pivot = pivot'
+      lhs = filter as (a -> lt a pivot)
+      mid =
+        use .base.Boolean not
+        filter as (a -> and (not (lt a pivot)) (not (lt pivot a)))
+      rhs = filter as (a -> lt pivot a)
+      qsort lhs ++ mid ++ qsort rhs
+
+---- Anything below this line is ignored by Unison.
+
+qsort.t08 : [.base.Test.Result]
+test> qsort.t08 = handle natLessThan in
+  use .base |>
+  use .base.List range
+  use .base.Universal ==
+  .test.internals.v1.Test.run
+    (.test.v1.expect
+      (   .virusdave.qsort
+           (range 1 10000 |> .base.List.reverse)
+              == range 1 10000))
+
+---- Anything below this line is ignored by Unison.
+
+tests.qsort.t08 : [.base.Test.Result]
+tests.qsort.t08 = handle natLessThan in 
+  use .base |>
+  use .base.List range
+  use .base.Universal ==
+  .test.internals.v1.Test.run
+    (.test.v1.expect
+      (   qsort (range 1 10000 |> .base.List.reverse)
+        == range 1 10000))
+
+---- Anything below this line is ignored by Unison.
+
+tests.msort.t08 : [.base.Test.Result]
+tests.msort.t08 = handle natLessThan in
+  use .base |>
+  use .base.List range
+  use .base.Universal ==
+  .test.internals.v1.Test.run
+    (.test.v1.expect
+      (   qsort (range 1 10000 |> .base.List.reverse) 
+        == range 1 10000))
+
+---- Anything below this line is ignored by Unison.
+
+tests.msort.t08 : [.base.Test.Result]
+tests.msort.t08 = handle natLessThan in
+  use .base |>
+  use .base.List range
+  use .base.Universal ==
+  .test.internals.v1.Test.run
+    (.test.v1.expect
+      (   msort (range 1 10000 |> .base.List.reverse)
+        == range 1 10000))
+
+---- Anything below this line is ignored by Unison.
+
+tests.msort.t07 : [.base.Test.Result]
+tests.msort.t07 = handle natLessThan in
+  use .base.Universal ==
+  .test.internals.v1.Test.run
+    (.test.v1.expect
+      (   msort [1, 34, 2, 83, 34, 2, 3, 2, 3]
+        == [1, 2, 2, 2, 3, 3, 34, 34, 83]))
+
+---- Anything below this line is ignored by Unison.
+
+tests.msort.t06 : [.base.Test.Result]
+tests.msort.t06 = handle natLessThan in
+  use .base.Universal ==
+  .test.internals.v1.Test.run
+    (.test.v1.expect (msort [4, 1, 2] == [1, 2, 4]))
+
+---- Anything below this line is ignored by Unison.
+
+tests.msort.t05 : [.base.Test.Result]
+tests.msort.t05 = handle natLessThan in
+  use .base.Universal ==
+  .test.internals.v1.Test.run
+    (.test.v1.expect (msort [1, 3, 4] == [1, 3, 4]))
+
+---- Anything below this line is ignored by Unison.
+
+tests.msort.t04 : [.base.Test.Result]
+tests.msort.t04 = handle natLessThan in
+  use .base.Universal ==
+  .test.internals.v1.Test.run
+    (.test.v1.expect (msort [2, 1] == [1, 2]))
+
+---- Anything below this line is ignored by Unison.
+
+tests.msort.t03 : [.base.Test.Result]
+tests.msort.t03 = handle natLessThan in
+  use .base.Universal ==
+  .test.internals.v1.Test.run
+    (.test.v1.expect (msort [1, 2] == [1, 2]))
+
+---- Anything below this line is ignored by Unison.
+
+tests.msort.t02 : [.base.Test.Result]
+tests.msort.t02 = handle natLessThan in 
+  use .base.Universal ==
+  .test.internals.v1.Test.run (.test.v1.expect (msort [1] == [1]))
+
+---- Anything below this line is ignored by Unison.
+
+tests.msort.t01 : [.base.Test.Result]
+tests.msort.t01 = handle natLessThan in 
+  use .base.Universal ==
+  .test.internals.v1.Test.run (.test.v1.expect (msort [] == []))
+
+---- Anything below this line is ignored by Unison.
+
+msort : [a] -> { LessThan a } [a]
+msort as =
+  case as of
+    [] -> []
+    [a] -> [a]
+    _ ->
+      mergeSorted : [a] -> [a] -> [a] -> [a]
+      mergeSorted as bs sofar =
+        use .base.List ++
+        case (as, bs) of
+          ([], []) -> sofar
+          (as, []) -> sofar ++ as
+          ([], bs) -> sofar ++ bs
+          (a +: as', b +: bs') ->
+            use .base.List :+
+            use .base.Universal ==
+            if (a `LessThan.lt` b) then mergeSorted as' bs (sofar :+ a)
+            else mergeSorted as bs' (sofar :+ b)
+      case .base.List.halve as of
+        (lhs, rhs) -> mergeSorted (msort lhs) (msort rhs) []
+
+---- Anything below this line is ignored by Unison.
+
+tests.qsort.t10 : [.base.Test.Result]
+tests.qsort.t10 = handle natLessThan in 
+  go _ =
+    as = !(.test.v1.list .test.v1.nat)
+    sorted = handle natLessThan in (qsort as)
+    .test.v1.expect
+      (case sorted of
+        [] -> true
+        (a +: _) ->
+          .base.List.foldLeft (a b -> (if LessThan.lt b a then b else a)) a as
+            == a)
+  .test.v1.runs 100 go
+
+---- Anything below this line is ignored by Unison.
+
+tests.qsort.t06 : [.base.Test.Result]
+tests.qsort.t06 = handle natLessThan in 
+  use .base.Universal ==
+  .test.internals.v1.Test.run
+    (.test.v1.expect (qsort [4, 1, 2] == [1, 2, 4]))
+
+---- Anything below this line is ignored by Unison.
+
+tests.qsort.t04 : [.base.Test.Result]
+tests.qsort.t04 = handle natLessThan in 
+  use .base.Universal ==
+  .test.internals.v1.Test.run
+    (.test.v1.expect (qsort [2, 1] == [1, 2]))
+
+---- Anything below this line is ignored by Unison.
+
+tests.qsort.t03 : [.base.Test.Result]
+tests.qsort.t03 = handle natLessThan in 
+  use .base.Universal ==
+  .test.internals.v1.Test.run
+    (.test.v1.expect (qsort [1, 2] == [1, 2]))
+
+---- Anything below this line is ignored by Unison.
+
+tests.qsort.t07 : [.base.Test.Result]
+tests.qsort.t07 = handle natLessThan in 
+  use .base.Universal ==
+  .test.internals.v1.Test.run
+    (.test.v1.expect
+      (   qsort [1, 34, 2, 83, 34, 2, 3, 2, 3]
+       == [1, 2, 2, 2, 3, 3, 34, 34, 83]))
+
+---- Anything below this line is ignored by Unison.
+
+tests.qsort.t02 : [.base.Test.Result]
+tests.qsort.t02 = handle natLessThan in 
+  .test.internals.v1.Test.run
+    (.test.v1.expect (qsort [1] == [1]))
+
+---- Anything below this line is ignored by Unison.
+
+tests.qsort.t01 : [.base.Test.Result]
+tests.qsort.t01 = handle natLessThan in 
+  .test.internals.v1.Test.run
+    (.test.v1.expect        (qsort [] == []))
+
+---- Anything below this line is ignored by Unison.
+
+tests.qsort.t05 : [.base.Test.Result]
+tests.qsort.t05 = handle natLessThan in 
+  use .base.Universal ==
+  .test.internals.v1.Test.run
+    (.test.v1.expect (qsort [1, 3, 4] == [1, 3, 4]))
+
+---- Anything below this line is ignored by Unison.
+
+natLessThan : .base.Request (LessThan .base.Nat) a -> a
+natLessThan e =
+  case e of
+    {LessThan.lt l r -> k} ->
+      handle natLessThan in
+        use .base.Universal <
+        k (if l < r then true else false)
+    { k } -> k
+
+---- Anything below this line is ignored by Unison.
+
+tests.qsort.t03 : [.base.Test.Result]
+tests.qsort.t03 =
+  use .base.Universal ==
+  .test.internals.v1.Test.run
+    (.test.v1.expect (handle natLessThan in qsort [1, 2] == [1, 2]))
+
+---- Anything below this line is ignored by Unison.
+
+tests.qsort.t01 : [.base.Test.Result]
+tests.qsort.t01 =
+  use .base.Universal ==
+  .test.internals.v1.Test.run (.test.v1.expect (handle natLessThan in qsort [] == []))
+
+---- Anything below this line is ignored by Unison.
+
+tests.qsort.t02 : [.base.Test.Result]
+tests.qsort.t02 =  
+  use .base.Universal ==
+  .test.internals.v1.Test.run (.test.v1.expect (handle natLessThan in qsort[1] == [1]))
+
+---- Anything below this line is ignored by Unison.
+
+qsort : [a] ->{LessThan a} [a]
+qsort as =
+  use LessThan lt
+  case as of
+    [] -> []
+    a +: [] -> [a]
+    a +: b +: [] -> if lt a b then [a, b] else [b, a]
+    a +: b +: c +: rest ->
+      use .base.List ++ filter
+      pivot : a
+      pivot =
+        use .base.Nat /
+        .base.List.unsafeAt (.base.List.size as / 2) as
+      pivot' : a
+      pivot' = if lt a b then if lt b c then b else c else if lt a c then a else c
+      lhs = filter as (a -> lt a pivot)
+      mid =
+        use .base.Boolean not
+        filter as (a -> and (not (lt a pivot)) (not (lt pivot a)))
+      rhs = filter as (a -> lt pivot a)
+      qsort lhs ++ mid ++ qsort rhs
+
+---- Anything below this line is ignored by Unison.
+
+use .base Boolean Request Nat
+
+ability LessThan a where
+  lt : a -> a -> Boolean
+
+natLessThan : Request (LessThan Nat) Boolean -> .base.Boolean
+natLessThan e =
+    (case e of
+      {LessThan.lt l r -> k} ->
+        use .base.Universal <
+        handle natLessThan in k (if l < r then true else false)
+      { k } -> k
+      )
+
+testLt42 : Nat -> {LessThan Nat} Boolean
+testLt42 a = a `LessThan.lt` 42
+
+> handle natLessThan in testLt42 41
+> handle natLessThan in testLt42 43
+
+---- Anything below this line is ignored by Unison.
+
+> qsort [3, 1, 2]
+> handle natLessThan in qsort [3, 1, 2]
+
+----
+
+tests.qsort.t01 : [.base.Test.Result]
+tests.qsort.t01 =
+  use .base.Universal ==
+  noNats = []
+  sorted = handle natLessThan in (qsort noNats)
+  .test.internals.v1.Test.run (.test.v1.expect ((sorted == [])))
+
+---- Anything below this line is ignored by Unison.
+
+
+
+----
+
+tests.msort.t10 : [.base.Test.Result]
+tests.msort.t10 =
+  go _ =
+    as = !(.test.v1.list .test.v1.nat)
+    sorted = msort as
+    .test.v1.expect
+      (case sorted of
+        [] -> true
+        (a +: _) ->
+          use .base.Universal ==
+          .base.List.foldLeft (a b -> (if (lt b a) then b else a)) a as
+            == a)
+  .test.v1.runs 100 go
+
+---- Anything below this line is ignored by Unison.
+
+qsort : [a] -> {LessThan a} [a]
+qsort as =
+  use .base.Universal ==
+  use LessThan lt
+  case as of
+    [] -> []
+    a +: [] -> [a]
+    a +: (b +: []) -> if (a `lt` b) then [a, b] else [b, a]
+    a +: (b +: (c +: rest))->
+      use .base.List ++ filter
+      pivot : a
+      pivot =
+        use .base.Nat /
+        .base.List.unsafeAt (.base.List.size as / 2) as
+      pivot' : a
+      pivot' =
+        if (a `lt` b) then
+          if (b `lt` c) then b else c
+        else
+          if (a `lt` c) then a else c
+
+      lhs = filter as (a -> a `lt` pivot)
+      mid = filter as (a -> and (not (a `lt` pivot)) (not (pivot `lt` a)))
+      rhs = filter as (a -> pivot `lt` a)
+      qsort lhs ++ mid ++ qsort rhs 
+
+---- Anything below this line is ignored by Unison.
+
+natLessThan : Request LessThan a -> Boolean
+natLessThan e = handle natLessThan in case e of
+  { LessThan.lt l r -> k } -> k if (l < r) then true else false

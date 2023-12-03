@@ -1,23 +1,100 @@
-view base.List.reverse
-move.term base.List.foldl base.List.foldLeft
-view base.List.at
-help view
-find : [a] -> ( ([b], a) -> b)  -> b -> [b]
-find : [a] -> ( ([b], a) -> b) ) -> b -> [b]
-view 3
-find : [a] -> [a]
-find [a] -> [a]
-edit quickstart.dsort
+ls
+cd releases.stream._v1
+ls
+help push
+push https://github.com/virusdave/unisoncb:.releases.stream.v1 .releases.stream._v1
+push https://github.com/virusdave/unisoncb:.releases.stream.v1 .releases.stream._v1
+push https://github.com/virusdave/unisoncb:.releases.stream.v1 .releases.stream._v1
+help push
+push https://github.com/virusdave/unisoncb:.releases.stream.v1
+push https://github.com/virusdave/unisoncb:.releases.stream.v1
+help push
+status
+history
+historu
 help
-help find
-ls: Nat -> a -> [a]
+help docs
+create.author virusdave "Dave Nicponski"
+create.author
 help
-execute base.io.printLine "test  \
-execute base.io.printLine "test"
-execute base.io.printLine "test
-execute base.io.printLine [1, 2, 3]
-find base.io.printLine
 help
-find : .base.Nat -> [.base.Nat]
-find .base.Nat -> [.base.Nat]
-edit quickstart.dsort
+test
+view tests.examples.primes10
+ls tests.examples
+ls
+test
+add
+edit tests.examples.primes
+view tests.examples.primes
+test tests.examples.primes
+view tests.examples.primes
+view tests.examples
+ls tests.examples
+ls
+cd .releases.stream._v1
+fork stream .releases.stream._v1
+ls stream.examples
+ls stream
+ls
+ls .trunk.virusdave
+ls .trunk.virusdave.common
+ls .trunk.virusdave
+ls
+ls pad.fileTextIO 
+ls abilities
+ls
+cd .trunk.virusdave.scratch
+ls
+ls
+cd ..
+ls
+view tests.examples.primes
+ls
+test tests.examples.primes
+test tests.examples
+ls tests.examples
+ls tests.examples.primes
+tests.examples.primes
+view tests.examples.primes
+view examples.primes
+ls examples
+ls pa
+delete.patch examples.patch
+view.patch examples.patch
+ls examples.p
+ls examples
+ls
+delete.patch patch
+delete.patch 
+view.patch 
+ls
+delete.term-replacement .virusdave.scratch.stream.Stream.take#s37hs7of89
+delete.term-replacement .virusdave.scratch.stream.tests.constructors.ex1#fuhns9oa8e
+delete.term-replacement .virusdave.scratch.stream.tests.constructors.ex1
+view.patch patch
+delete.term-replacement tests.laziness.ex3
+view.patch patch
+cd stream
+help delete.term-replacement 
+view.patch stream.patch
+ls stream
+ls
+# fork stream .releases._v1.
+ls
+cd scratch
+ls
+ls
+ls scratch.stream
+ls scratch.stream.examples
+ls scratch.stream.examples
+ls scratch.stream
+ls scratch
+ls
+l
+view.patch patch
+ls
+cd .trunk.virusdave
+ls
+help fork
+help merge
+ls
